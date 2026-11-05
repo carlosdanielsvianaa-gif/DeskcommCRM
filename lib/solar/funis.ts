@@ -106,6 +106,7 @@ export const MODELOS_DE_FUNIL: Readonly<Record<ModeloDeFunilSolar, ModeloDeFunil
       },
       { key: "loja", label: "Loja", type: "searchable_select", allow_new: true, options: [] },
       { key: "pre_vendedor", label: "Pré-vendedor", type: "text" },
+      { key: "vendedor_original", label: "Vendedor (sistema anterior)", type: "text" },
       { key: "cep", label: "CEP", type: "text" },
     ],
     motivosDePerda: [
