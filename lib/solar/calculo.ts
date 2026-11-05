@@ -14,10 +14,13 @@
  *   módulos             = arredonda PARA CIMA (kWp × 1000 ÷ potência do módulo)
  *   geração mensal      = kWp instalado × HSP × 30 × rendimento
  *
- * A economia do ano 1 é a energia compensada × tarifa × (1 − parcela do Fio B
- * que não se compensa). Nos anos seguintes a tarifa sobe pelo reajuste e a
- * geração cai pela degradação dos módulos. O payback é o primeiro ponto em que
- * a economia acumulada alcança o investimento, interpolado dentro do ano.
+ * A economia de cada ano é a energia aproveitada × tarifa, MENOS o Fio B que a
+ * Lei 14.300 deixa de compensar: ele incide só sobre a parte injetada na rede
+ * (o consumo simultâneo à geração não passa pelo medidor de injeção), no
+ * percentual do ano-calendário (`percentualDoFioB`). Tarifa e Fio B sobem pelo
+ * reajuste; a geração cai pela degradação dos módulos. O payback é o primeiro
+ * ponto em que a economia acumulada alcança o investimento, interpolado dentro
+ * do ano.
  */
 
 export type TipoDeLigacao = "monofasica" | "bifasica" | "trifasica";
@@ -40,6 +43,18 @@ export const POTENCIAS_DE_INVERSOR_KW: readonly number[] = Object.freeze([
  */
 export const SOBRECARGA_DO_INVERSOR = 1.25;
 
+/**
+ * Parcela do Fio B NÃO compensada, por ano-calendário, para sistema que pediu
+ * acesso depois de 07/01/2023 (Lei 14.300/2022, art. 27). De 2029 em diante a
+ * regra depende da valoração que a ANEEL ainda não concluiu; 100% é a hipótese
+ * conservadora, e é dita como hipótese no texto da proposta.
+ */
+export function percentualDoFioB(ano: number): number {
+  if (ano <= 2022) return 0;
+  const escada: Record<number, number> = { 2023: 15, 2024: 30, 2025: 45, 2026: 60, 2027: 75, 2028: 90 };
+  return escada[ano] ?? 100;
+}
+
 export interface EntradaSolar {
   consumo_medio_kwh: number;
   tipo_ligacao: TipoDeLigacao;
@@ -48,20 +63,28 @@ export interface EntradaSolar {
   area_modulo_m2: number;
   rendimento_pct: number;
   tarifa_kwh: number;
-  fio_b_pct: number;
+  /** Componente Fio B da TUSD da distribuidora, em R$/kWh. */
+  fio_b_kwh: number;
+  /** Parte da geração consumida na hora (não é injetada, não paga Fio B). */
+  simultaneidade_pct: number;
+  /** Ano em que o sistema começa a gerar: é dele que a escada do Fio B parte. */
+  ano_inicio: number;
   preco_por_wp: number;
   reajuste_tarifa_pct_ano: number;
   degradacao_pct_ano: number;
   anos_analise: number;
 }
 
-export const ENTRADA_SOLAR_PADRAO: Readonly<Omit<EntradaSolar, "consumo_medio_kwh" | "hsp">> = Object.freeze({
+export const ENTRADA_SOLAR_PADRAO: Readonly<Omit<EntradaSolar, "consumo_medio_kwh" | "hsp" | "ano_inicio">> = Object.freeze({
   tipo_ligacao: "bifasica",
   potencia_modulo_w: 610,
   area_modulo_m2: 2.6,
   rendimento_pct: 80,
   tarifa_kwh: 0.95,
-  fio_b_pct: 15,
+  // Ordem de grandeza das distribuidoras do Norte/Nordeste (ANEEL, 2025:
+  // Equatorial PA 0,39; Coelba 0,32). Confira na tarifa da distribuidora.
+  fio_b_kwh: 0.35,
+  simultaneidade_pct: 30,
   preco_por_wp: 3.5,
   reajuste_tarifa_pct_ano: 6,
   degradacao_pct_ano: 0.5,
@@ -118,7 +141,7 @@ export function calcularSistemaSolar(entrada: EntradaSolar): ResultadoSolar {
   const potenciaKwp = (quantidadeModulos * entrada.potencia_modulo_w) / 1000;
   const geracaoMensal = potenciaKwp * entrada.hsp * diasPorMes * rendimento;
 
-  const tarifaEfetiva = entrada.tarifa_kwh * (1 - entrada.fio_b_pct / 100);
+  const injetada = 1 - entrada.simultaneidade_pct / 100;
   const investimento = potenciaKwp * 1000 * entrada.preco_por_wp;
 
   const fluxo: AnoDoFluxo[] = [];
@@ -126,9 +149,10 @@ export function calcularSistemaSolar(entrada: EntradaSolar): ResultadoSolar {
   let payback: number | null = null;
   for (let ano = 1; ano <= entrada.anos_analise; ano++) {
     const geracaoDoAno = geracaoMensal * 12 * (1 - entrada.degradacao_pct_ano / 100) ** (ano - 1);
-    const tarifaDoAno = tarifaEfetiva * (1 + entrada.reajuste_tarifa_pct_ano / 100) ** (ano - 1);
-    const compensadaNoAno = Math.min(geracaoDoAno, energiaCompensavel * 12);
-    const economiaDoAno = compensadaNoAno * tarifaDoAno;
+    const reajuste = (1 + entrada.reajuste_tarifa_pct_ano / 100) ** (ano - 1);
+    const aproveitadaNoAno = Math.min(geracaoDoAno, energiaCompensavel * 12);
+    const fioBDoAno = entrada.fio_b_kwh * reajuste * (percentualDoFioB(entrada.ano_inicio + ano - 1) / 100);
+    const economiaDoAno = aproveitadaNoAno * (entrada.tarifa_kwh * reajuste - injetada * fioBDoAno);
     const antes = acumulado;
     acumulado += economiaDoAno;
     if (payback === null && investimento > 0 && acumulado >= investimento && economiaDoAno > 0) {
@@ -142,7 +166,8 @@ export function calcularSistemaSolar(entrada: EntradaSolar): ResultadoSolar {
     });
   }
 
-  const economiaMensal = Math.min(geracaoMensal, energiaCompensavel) * tarifaEfetiva;
+  // "Economia por mês" é a do ano 1, já com o Fio B daquele ano.
+  const economiaMensal = (fluxo[0]?.economia ?? 0) / 12;
   const cobertura = entrada.consumo_medio_kwh > 0 ? Math.min(geracaoMensal / entrada.consumo_medio_kwh, 1) : 0;
 
   return {

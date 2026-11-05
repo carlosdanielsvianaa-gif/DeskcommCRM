@@ -38,7 +38,7 @@ const SECOES: SecaoDoModelo[] = [
   secao(
     "economia",
     "Economia e retorno do investimento",
-    "Economia estimada no primeiro ano: {{solar.economia_anual}} ({{solar.economia_mensal}} por mês). Considerando reajuste de tarifa de {{solar.reajuste_tarifa_pct_ano}} ao ano e a perda natural de rendimento dos módulos, o investimento se paga em cerca de {{solar.payback_anos}}, e a economia acumulada em {{solar.anos_analise}} anos é de aproximadamente {{solar.economia_total_periodo}}.",
+    "Economia estimada no primeiro ano: {{solar.economia_anual}} ({{solar.economia_mensal}} por mês). A conta já desconta a parcela do Fio B que a Lei 14.300 não compensa, crescente até 2028 ({{solar.fio_b_regra}}; de 2029 em diante considera-se a cobrança integral, até a ANEEL definir a regra). Considerando reajuste de tarifa de {{solar.reajuste_tarifa_pct_ano}} ao ano e a perda natural de rendimento dos módulos, o investimento se paga em cerca de {{solar.payback_anos}}, e a economia acumulada em {{solar.anos_analise}} anos é de aproximadamente {{solar.economia_total_periodo}}.",
   ),
   secao(
     "investment",

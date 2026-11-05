@@ -42,7 +42,9 @@ interface Formulario {
   area_modulo_m2: string;
   tarifa_kwh: string;
   preco_por_wp: string;
-  fio_b_pct: string;
+  fio_b_kwh: string;
+  simultaneidade_pct: string;
+  ano_inicio: string;
   reajuste_tarifa_pct_ano: string;
   rendimento_pct: string;
   degradacao_pct_ano: string;
@@ -67,7 +69,9 @@ const FORMULARIO_INICIAL: Formulario = {
   area_modulo_m2: decimal(P.area_modulo_m2),
   tarifa_kwh: decimal(P.tarifa_kwh),
   preco_por_wp: decimal(P.preco_por_wp),
-  fio_b_pct: decimal(P.fio_b_pct),
+  fio_b_kwh: decimal(P.fio_b_kwh),
+  simultaneidade_pct: decimal(P.simultaneidade_pct),
+  ano_inicio: String(new Date().getFullYear()),
   reajuste_tarifa_pct_ano: decimal(P.reajuste_tarifa_pct_ano),
   rendimento_pct: decimal(P.rendimento_pct),
   degradacao_pct_ano: decimal(P.degradacao_pct_ano),
@@ -91,7 +95,8 @@ const CAMPOS_LEMBRADOS = [
   "area_modulo_m2",
   "tarifa_kwh",
   "preco_por_wp",
-  "fio_b_pct",
+  "fio_b_kwh",
+  "simultaneidade_pct",
   "reajuste_tarifa_pct_ano",
   "rendimento_pct",
   "degradacao_pct_ano",
@@ -176,7 +181,9 @@ export function CalculadoraSolarClient({ leads, podeCriarProposta, preselectedLe
         area_modulo_m2: lerNumero(form.area_modulo_m2),
         rendimento_pct: lerNumero(form.rendimento_pct),
         tarifa_kwh: tarifa,
-        fio_b_pct: lerNumero(form.fio_b_pct),
+        fio_b_kwh: lerNumero(form.fio_b_kwh),
+        simultaneidade_pct: lerNumero(form.simultaneidade_pct),
+        ano_inicio: lerNumero(form.ano_inicio),
         preco_por_wp: lerNumero(form.preco_por_wp),
         reajuste_tarifa_pct_ano: lerNumero(form.reajuste_tarifa_pct_ano),
         degradacao_pct_ano: lerNumero(form.degradacao_pct_ano),
@@ -327,10 +334,16 @@ export function CalculadoraSolarClient({ leads, podeCriarProposta, preselectedLe
               {campoNumero("preco_por_wp", t("Preço do sistema (R$ por Wp)"), t("Equipamentos + instalação + margem."))}
               {campoNumero("tarifa_kwh", t("Tarifa com impostos (R$/kWh)"))}
               {campoNumero(
-                "fio_b_pct",
-                t("Parcela não compensada — Fio B (%)"),
-                t("Parte da tarifa que a Lei 14.300 não compensa. Ajuste conforme a distribuidora."),
+                "fio_b_kwh",
+                t("Fio B da distribuidora (R$/kWh)"),
+                t("Componente Fio B da TUSD, na tarifa da distribuidora. A cobrança segue a escada da Lei 14.300: 60% em 2026, 75% em 2027, 90% em 2028."),
               )}
+              {campoNumero(
+                "simultaneidade_pct",
+                t("Consumo simultâneo (%)"),
+                t("Parte da geração usada na hora, que não é injetada na rede e não paga Fio B."),
+              )}
+              {campoNumero("ano_inicio", t("Ano em que o sistema liga"))}
               {campoNumero("reajuste_tarifa_pct_ano", t("Reajuste da tarifa (% ao ano)"))}
               {campoNumero("rendimento_pct", t("Rendimento do sistema (%)"), t("Perdas de calor, cabos e inversor."))}
               {campoNumero("degradacao_pct_ano", t("Perda de rendimento dos módulos (% ao ano)"))}

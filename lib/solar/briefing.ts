@@ -63,6 +63,7 @@ export function montarPropostaSolar(entrada: EntradaSolarValidada): PropostaSola
     anos_analise: numero(entrada.anos_analise),
     economia_total_periodo: reais(resultado.economia_total_periodo),
     reajuste_tarifa_pct_ano: `${numero(entrada.reajuste_tarifa_pct_ano, entrada.reajuste_tarifa_pct_ano % 1 === 0 ? 0 : 1)}%`,
+    fio_b_regra: `Fio B de ${reais(entrada.fio_b_kwh)}/kWh, com ${numero(entrada.simultaneidade_pct)}% de consumo simultâneo e início em ${entrada.ano_inicio}`,
   };
 
   const descricao = `Sistema fotovoltaico ${numero(resultado.potencia_kwp, 2)} kWp — ${resultado.quantidade_modulos} módulos ${modulo}, inversor ${inversor}, instalação e homologação`;

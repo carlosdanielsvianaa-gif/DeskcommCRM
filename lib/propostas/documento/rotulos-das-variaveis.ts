@@ -47,6 +47,7 @@ export const ROTULO_DA_VARIAVEL: Readonly<Record<string, string>> = Object.freez
   "solar.economia_anual": "Economia no primeiro ano",
   "solar.economia_mensal": "Economia por mês",
   "solar.economia_total_periodo": "Economia acumulada no período",
+  "solar.fio_b_regra": "Premissas do Fio B (Lei 14.300)",
   "solar.geracao_anual_kwh": "Geração anual (kWh)",
   "solar.geracao_mensal_kwh": "Geração mensal (kWh)",
   "solar.hsp": "Irradiação média (kWh/m²/dia)",
