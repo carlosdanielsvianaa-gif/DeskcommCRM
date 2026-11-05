@@ -483,6 +483,39 @@ async function withTarefas(
 }
 
 /**
+ * Anexa a cada negócio quantas propostas ele tem (sem as substituídas e as
+ * canceladas) — o selo de propostas do card. Uma leitura para o quadro inteiro,
+ * em lotes de ids como as outras etapas.
+ */
+async function withPropostas(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  organizationId: string,
+  leads: Lead[],
+): Promise<{ leads: Lead[]; error: string | null }> {
+  const leadIds = leads.map((l) => l.id);
+  if (leadIds.length === 0) return { leads, error: null };
+
+  const { data, error } = await buscaEmLotes(leadIds, (lote) =>
+    supabase
+      .from("crm_proposals")
+      .select("lead_id, status")
+      .eq("organization_id", organizationId)
+      .in("lead_id", lote),
+  );
+  if (error) return { leads, error: error.message };
+
+  const contagem = new Map<string, number>();
+  for (const linha of (data ?? []) as Array<{ lead_id: string | null; status: string }>) {
+    if (linha.status === "substituida" || linha.status === "cancelada") continue;
+    if (linha.lead_id) contagem.set(linha.lead_id, (contagem.get(linha.lead_id) ?? 0) + 1);
+  }
+  return {
+    leads: leads.map((l) => (contagem.has(l.id) ? { ...l, propostas: contagem.get(l.id) } : l)),
+    error: null,
+  };
+}
+
+/**
  * Anexa a cada negócio do quadro o que os campos `file` do funil têm (#2829).
  *
  * Uma leitura de `crm_lead_attachments` para o quadro inteiro, em lotes de ids
@@ -665,10 +698,19 @@ export async function GET(req: NextRequest, ctx: RouteCtx): Promise<Response> {
   // marcadores, que seguem sendo a última etapa vigiada pelas cercas do quadro
   // (`kanban-atalho-conversa`, `funil-mostra-dados-do-cliente`). Cada etapa só
   // acrescenta o próprio campo ao lead, então a ordem não muda o resultado.
-  const leadsComAnexos = await withAnexos(
+  const leadsComPropostas = await withPropostas(
     supabase,
     (pipeline as Pipeline).organization_id,
     leadsComTarefas.leads,
+  );
+  if (leadsComPropostas.error) {
+    return fail("internal_error", leadsComPropostas.error, 500, { requestId });
+  }
+
+  const leadsComAnexos = await withAnexos(
+    supabase,
+    (pipeline as Pipeline).organization_id,
+    leadsComPropostas.leads,
     camposDeArquivoDoNegocio((pipeline as Pipeline).settings),
   );
   if (leadsComAnexos.error) {

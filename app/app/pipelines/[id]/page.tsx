@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
+import { lerTotaisDoFunil } from "@/lib/kanban/totais-do-funil";
 import type { Pipeline, Stage } from "@/lib/kanban/types";
 import { createClient } from "@/lib/supabase/server";
 import { PipelinePageClient } from "./_client";
@@ -53,6 +54,9 @@ export default async function PipelinePage({ params }: { params: Promise<{ id: s
     .eq("organization_id", activeOrg.orgId)
     .eq("is_archived", false)
     .order("position");
+  // Propostas, Aceitas e Vendas do topo do funil. Falha vira `null` e o topo
+  // some — o quadro abre igual (lib/kanban/totais-do-funil.ts).
+  const totais = await lerTotaisDoFunil(supabase, activeOrg.orgId, id);
   return (
     <PipelinePageClient
       pipelineId={id}
@@ -61,6 +65,7 @@ export default async function PipelinePage({ params }: { params: Promise<{ id: s
       funis={funis ?? []}
       funilInicial={pipeline as Pipeline}
       etapasIniciais={(etapas ?? []) as Stage[]}
+      totais={totais}
     />
   );
 }

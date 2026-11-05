@@ -3,6 +3,8 @@ import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useT } from "@/hooks/i18n/useT";
+import { TotaisDoFunil } from "@/components/kanban/TotaisDoFunil";
+import type { TotaisDoFunil as TotaisDoFunilLidos } from "@/lib/kanban/totais-do-funil";
 import { useBoard } from "@/hooks/kanban/useBoard";
 import { useDensidadeDoQuadro } from "@/hooks/kanban/useDensidadeDoQuadro";
 
@@ -74,6 +76,7 @@ export function PipelinePageClient({
   funis,
   funilInicial,
   etapasIniciais,
+  totais = null,
 }: {
   pipelineId: string;
   initialName: string;
@@ -93,6 +96,8 @@ export function PipelinePageClient({
   funilInicial: Pipeline;
   /** As etapas vivas, na mesma leitura leve — a lista mostra o nome de cada uma. */
   etapasIniciais: Stage[];
+  /** Propostas, Aceitas e Vendas do topo (lib/kanban/totais-do-funil.ts); nulo esconde a faixa. */
+  totais?: TotaisDoFunilLidos | null;
 }) {
   const t = useT();
   /**
@@ -446,6 +451,7 @@ export function PipelinePageClient({
           )}
         </div>
       </header>
+      <TotaisDoFunil totais={totais} />
       {arquivado && (
         <p
           className="rounded-md border border-border bg-surface-elevated/40 p-3 text-sm leading-relaxed text-text-muted"

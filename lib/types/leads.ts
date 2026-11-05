@@ -161,6 +161,12 @@ export interface Lead {
    */
   tarefas?: ResumoDasTarefas;
   /**
+   * Derivado (não é coluna): quantas propostas este negócio tem, sem as
+   * substituídas por versão nova e as canceladas — o selo de propostas do card.
+   * Ausente quando não há nenhuma.
+   */
+  propostas?: number;
+  /**
    * Derivado (não é coluna): o que os campos `file` do funil TÊM neste negócio
    * — o bloco que o card desenha sem abrir o dossiê (#2829, fatia 1).
    *
