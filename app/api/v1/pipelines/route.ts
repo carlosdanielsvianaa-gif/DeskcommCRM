@@ -130,7 +130,14 @@ export async function POST(req: NextRequest): Promise<Response> {
     // criado sem funil escolhido não teria para onde ir. `uniq_..._org_default`
     // é parcial, então só os ativos disputam esse lugar.
     is_default: funis.filter((f) => !f.is_archived).length === 0,
-    ...(modelo ? { settings: { fields: [...MODELOS_DE_FUNIL[modelo].campos] } as unknown as Json } : {}),
+    ...(modelo
+      ? {
+          settings: {
+            fields: [...MODELOS_DE_FUNIL[modelo].campos],
+            lost_reasons: [...MODELOS_DE_FUNIL[modelo].motivosDePerda],
+          } as unknown as Json,
+        }
+      : {}),
   };
 
   const { data: criado, error } = await supabase

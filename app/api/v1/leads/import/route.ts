@@ -28,13 +28,16 @@ import { type NextRequest } from "next/server";
 
 import { ApiError } from "@/lib/api/types";
 import { ok, fail } from "@/lib/api/wrappers";
-import { audit } from "@/lib/audit";
+import { audit, isServiceRoleConfigured } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
 import { contatosDonosDosExtras } from "@/lib/channels/contato-por-telefone";
 import { canonicalPhoneBR, phoneLookupVariants } from "@/lib/channels/phone-variants";
 import { CSV_MAX_BYTES, CSV_MAX_DATA_ROWS, decodificarCsv } from "@/lib/contacts/csv";
 import { traduzir } from "@/lib/i18n/dicionario";
-import { lerPlanilhaDeLeads, type ErroDaLinha } from "@/lib/leads/planilha";
+import { lerPlanilhaDeLeads, normalizarCabecalho as normalizarColuna, type ErroDaLinha } from "@/lib/leads/planilha";
+import { camposDoFunil } from "@/lib/leads/campos-do-funil";
+import { resolverExtras, type ContextoDosExtras, type MembroConhecido } from "@/lib/leads/planilha-extras";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createLeadHandler } from "@/app/api/v1/leads/_handler";
 import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
@@ -191,6 +194,23 @@ export async function POST(req: NextRequest): Promise<Response> {
   // e o produto passaria a ter duplicata que ele mesmo fabricou.
   const contatoPorTelefone = new Map<string, string>();
 
+  // As colunas a mais (etapa, motivo da perda, vendedor, campos do funil) só
+  // custam leitura quando a planilha as traz — a importação de sempre segue
+  // com as mesmas consultas de antes.
+  const temExtras = lido.leads.some((l) => Object.keys(l.extras).length > 0);
+  // Ler o contexto não pode derrubar a importação: sem ele, as colunas a mais
+  // só deixam de ser aproveitadas, como sempre foi.
+  const contextoDosExtras = temExtras
+    ? await lerContextoDosExtras(supabase, orgId, pipelineId).catch((err: unknown) => {
+        logger.warn("[leads.import] não li o funil para as colunas a mais", {
+          organizationId: orgId,
+          error: (err instanceof Error ? err.message : String(err)).slice(0, 200),
+        });
+        return null;
+      })
+    : null;
+  const colunasUsadas = new Set<string>();
+
   // Só os contatos que ESTA requisição criou, na ordem em que criou — é esta
   // lista que `desfazContatosCriados` devolve ao banco quando a importação cai
   // no meio (#2297, caminho 3). Os contatos que JÁ existiam não entram aqui:
@@ -253,12 +273,18 @@ export async function POST(req: NextRequest): Promise<Response> {
         }
       }
 
-      await createLeadHandler(
+      const extras = contextoDosExtras ? resolverExtras(linha.extras, contextoDosExtras) : null;
+      for (const c of extras?.usadas ?? []) colunasUsadas.add(c);
+      for (const aviso of extras?.avisos ?? []) resumo.erros.push({ linha: linha.linha, motivo: aviso });
+
+      const criado = await createLeadHandler(
         supabase,
         { organization_id: orgId, actor: { type: "user", id: authz.user.id }, requestId },
         {
           pipeline_id: pipelineId,
-          stage_id: stageId,
+          // Perdido nasce numa etapa ABERTA e é movido logo abaixo: a etapa de
+          // perda exige o motivo, que a criação não leva.
+          stage_id: extras?.perda ? stageId : (extras?.stage_id ?? stageId),
           title: linha.title,
           description: linha.description,
           contact_id: contactId,
@@ -266,9 +292,25 @@ export async function POST(req: NextRequest): Promise<Response> {
           tags: linha.tags,
           source: linha.source,
           via_planilha: true,
+          ...(extras?.owner_user_id ? { owner_user_id: extras.owner_user_id } : {}),
+          ...(extras && Object.keys(extras.custom_fields).length > 0 ? { custom_fields: extras.custom_fields } : {}),
         },
       );
       resumo.criados += 1;
+
+      if (extras?.perda) {
+        const leadId = (criado as { id?: string } | null)?.id;
+        const { error: erroDaPerda } = leadId
+          ? await supabase
+              .from("crm_leads")
+              .update({ stage_id: extras.perda.stage_id, lost_reason: extras.perda.lost_reason })
+              .eq("organization_id", orgId)
+              .eq("id", leadId)
+          : { error: { message: "sem id" } };
+        if (erroDaPerda) {
+          resumo.erros.push({ linha: linha.linha, motivo: t("o negócio entrou aberto: não consegui marcá-lo como perdido") });
+        }
+      }
     } catch (err) {
       // A ETAPA ERRADA DERRUBA A IMPORTAÇÃO INTEIRA, e de propósito: se a etapa
       // não é desta organização, ela não será na linha 2 nem na 300. Seguir
@@ -289,6 +331,10 @@ export async function POST(req: NextRequest): Promise<Response> {
         motivo: err instanceof Error ? err.message : t("linha recusada pelo banco"),
       });
     }
+  }
+
+  if (colunasUsadas.size > 0) {
+    resumo.colunas_ignoradas = resumo.colunas_ignoradas.filter((c) => !colunasUsadas.has(normalizarColuna(c)));
   }
 
   await audit({
@@ -388,4 +434,62 @@ export async function GET(): Promise<Response> {
       "x-request-id": requestId,
     },
   });
+}
+
+/**
+ * O que o funil de destino conhece, para `resolverExtras`: os campos e os
+ * motivos de perda do `settings`, as etapas e quem é da empresa.
+ *
+ * Os membros saem do admin client SÓ para ler e-mail e nome de quem já tem
+ * vínculo com ESTA organização (a lista vem de `user_organizations` filtrada
+ * por `organization_id`) — mesmo caminho de `GET /api/v1/team`.
+ */
+async function lerContextoDosExtras(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orgId: string,
+  pipelineId: string,
+): Promise<ContextoDosExtras> {
+  const [{ data: funil }, { data: etapas }, { data: vinculos }] = await Promise.all([
+    supabase.from("crm_pipelines").select("settings").eq("organization_id", orgId).eq("id", pipelineId).maybeSingle(),
+    supabase
+      .from("crm_stages")
+      .select("id, name, is_won, is_lost")
+      .eq("organization_id", orgId)
+      .eq("pipeline_id", pipelineId)
+      .eq("is_archived", false),
+    supabase.from("user_organizations").select("user_id, revoked_at").eq("organization_id", orgId),
+  ]);
+
+  const settings = ((funil as { settings?: unknown } | null)?.settings ?? null) as Record<string, unknown> | null;
+  const motivos = Array.isArray(settings?.lost_reasons)
+    ? (settings.lost_reasons as unknown[])
+        .map((m) => (typeof m === "string" ? m : (m as { label?: unknown } | null)?.label))
+        .filter((m): m is string => typeof m === "string" && m.trim() !== "")
+    : [];
+
+  const membros: MembroConhecido[] = [];
+  const ativos = ((vinculos ?? []) as Array<{ user_id: string; revoked_at: string | null }>).filter((v) => !v.revoked_at);
+  try {
+    if (isServiceRoleConfigured() && ativos.length > 0) {
+      const admin = createAdminClient();
+      for (const v of ativos.slice(0, 200)) {
+        const { data } = await admin.auth.admin.getUserById(v.user_id);
+        const u = data?.user;
+        membros.push({
+          user_id: v.user_id,
+          email: u?.email ?? null,
+          full_name: (u?.user_metadata?.full_name as string | undefined) ?? null,
+        });
+      }
+    }
+  } catch {
+    // Sem a lista de membros a coluna "vendedor" não acha dono — o negócio entra sem dono.
+  }
+
+  return {
+    campos: camposDoFunil(settings),
+    etapas: (etapas ?? []) as ContextoDosExtras["etapas"],
+    motivos,
+    membros,
+  };
 }

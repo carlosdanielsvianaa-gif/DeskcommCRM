@@ -46,8 +46,8 @@ describe("listarModelosDaOrganizacao", () => {
       db([{ slug: "empresa_locacao", nome: "Locação por temporada", version: 1, sections: [{}] }]),
       "org-1",
     );
-    expect(lista).toHaveLength(9);
-    expect(lista[8]).toEqual({ slug: "empresa_locacao", nome: "Locação por temporada", origem: "empresa", secoes: 1, version: 1, oculto: false });
+    expect(lista).toHaveLength(10);
+    expect(lista[9]).toEqual({ slug: "empresa_locacao", nome: "Locação por temporada", origem: "empresa", secoes: 1, version: 1, oculto: false });
   });
 
   it("slug em modelos_ocultos marca oculto no modelo da plataforma", async () => {
@@ -89,7 +89,7 @@ describe("listarModelosAtivos", () => {
       db([], { proposals: { modelos_ocultos: ["site_institucional", "automacao"] } }),
       "org-1",
     );
-    expect(lista).toHaveLength(6);
+    expect(lista).toHaveLength(7);
     expect(lista.map((m) => m.slug)).not.toContain("site_institucional");
     expect(lista.map((m) => m.slug)).toContain("ecommerce");
   });

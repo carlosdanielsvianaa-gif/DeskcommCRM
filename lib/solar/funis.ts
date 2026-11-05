@@ -29,6 +29,8 @@ export interface ModeloDeFunil {
   descricao: string;
   etapas: readonly EtapaDoModelo[];
   campos: readonly CustomFieldDef[];
+  /** Os motivos que a etapa de perda oferece (`settings.lost_reasons`). */
+  motivosDePerda: readonly string[];
 }
 
 const etapa = (name: string, slug: string, fim?: "ganho" | "perdido"): EtapaDoModelo => ({
@@ -56,7 +58,7 @@ const CAMPOS_DO_SISTEMA: CustomFieldDef[] = [
     key: "tipo_cliente",
     label: "Tipo",
     type: "select",
-    options: opcoes("Residencial", "Comercial", "Rural", "Industrial", "Usina de investimento"),
+    options: opcoes("Residencial", "Comercial", "Rural", "Industrial", "Off Grid", "Usina de investimento"),
   },
   { key: "cidade", label: "Cidade", type: "text" },
   {
@@ -74,7 +76,6 @@ export const MODELOS_DE_FUNIL: Readonly<Record<ModeloDeFunilSolar, ModeloDeFunil
     descricao: "Do primeiro contato à venda do sistema fotovoltaico.",
     etapas: [
       etapa("Novo lead", "novo_lead"),
-      etapa("Conta de luz recebida", "conta_recebida"),
       etapa("Gerar proposta", "gerar_proposta"),
       etapa("Proposta apresentada", "proposta_apresentada"),
       etapa("Negociação", "negociacao"),
@@ -90,18 +91,32 @@ export const MODELOS_DE_FUNIL: Readonly<Record<ModeloDeFunilSolar, ModeloDeFunil
         allow_new: true,
         options: opcoes(
           "WhatsApp",
+          "[Meta] WhatsApp",
           "Instagram",
           "Facebook",
-          "Indicação de cliente",
-          "Agente indicador",
-          "Direto da agenda",
-          "Fluxo de loja",
-          "Ligação recebida",
-          "Orçamento pelo site",
-          "Integração de marketing",
+          "Indicação Cliente",
+          "Agente Indicador",
+          "Direto da Agenda",
+          "Fluxo de Loja",
+          "Prospecção de Campo",
+          "Ligação Recebida",
+          "Orçamento Site",
+          "Integração de Marketing",
         ),
       },
       { key: "loja", label: "Loja", type: "searchable_select", allow_new: true, options: [] },
+      { key: "pre_vendedor", label: "Pré-vendedor", type: "text" },
+      { key: "vendedor_original", label: "Vendedor (sistema anterior)", type: "text" },
+      { key: "cep", label: "CEP", type: "text" },
+    ],
+    motivosDePerda: [
+      "Parou de responder",
+      "Somente curiosidade",
+      "Oportunidade futura",
+      "Contato inválido",
+      "Fechou com concorrente",
+      "Crédito não aprovado",
+      "Inviabilidade técnica",
     ],
   },
   energia_solar_obra: {
@@ -124,5 +139,6 @@ export const MODELOS_DE_FUNIL: Readonly<Record<ModeloDeFunilSolar, ModeloDeFunil
       { key: "data_vistoria", label: "Data da vistoria", type: "date" },
       { key: "conta_de_luz", label: "Conta de luz", type: "file" },
     ],
+    motivosDePerda: ["Desistência do cliente", "Crédito não aprovado", "Inviabilidade técnica", "Reprovado pela distribuidora"],
   },
 });

@@ -1021,7 +1021,7 @@ describe("crm_preparar_proposta", () => {
       modelos?: Array<{ slug: string }>;
     };
     expect(r.modelos?.map((m) => m.slug)).not.toContain("site_institucional");
-    expect(r.modelos).toHaveLength(7);
+    expect(r.modelos).toHaveLength(8);
   });
 
   it("com template_slug válido e ativo devolve campos_do_modelo legíveis, sem os calculados", async () => {
