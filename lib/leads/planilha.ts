@@ -64,7 +64,7 @@ const COLUNAS: Record<string, readonly string[]> = {
   etiquetas: ["tags", "etiquetas", "marcadores"],
 };
 
-function normalizarCabecalho(texto: string): string {
+export function normalizarCabecalho(texto: string): string {
   return texto
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -93,6 +93,13 @@ export interface LinhaDeLead {
   email: string | null;
   tags: string[];
   source: string;
+  /**
+   * As colunas que nenhum campo fixo reconheceu, pelo cabeçalho normalizado
+   * (sem acento, minúsculo). Quem as lê é `lib/leads/planilha-extras.ts`: a
+   * etapa, o motivo da perda, o vendedor e os campos personalizados do funil.
+   * Só entram células preenchidas.
+   */
+  extras: Record<string, string>;
 }
 
 export interface ErroDaLinha {
@@ -190,6 +197,14 @@ export function lerPlanilhaDeLeads(
 
     const emailTexto = valor("email");
 
+    const extras: Record<string, string> = {};
+    cabecalho.forEach((titulo, idx) => {
+      if (mapa.has(idx)) return;
+      const chave = normalizarCabecalho(titulo);
+      const celula = (bruto[idx] ?? "").trim();
+      if (chave !== "" && celula !== "" && extras[chave] === undefined) extras[chave] = celula;
+    });
+
     leads.push({
       linha: numeroNaPlanilha,
       title,
@@ -204,6 +219,7 @@ export function lerPlanilhaDeLeads(
         .filter(Boolean)
         .slice(0, 20),
       source: valor("origem") || ORIGEM_DA_PLANILHA,
+      extras,
     });
   }
 
