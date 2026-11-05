@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { entradaSolarSchema } from "./solar";
+
 /**
  * O CONTRATO DA PROPOSTA — um só, lido pela tela E pela rota (padrão
  * `lib/schemas/produtos.ts`, CLAUDE.md).
@@ -21,5 +23,9 @@ export const propostaCreateSchema = z.object({
   condicoes: z.string().max(4000).nullable().optional(),
   valid_until: z.string().date().nullable().optional(),
   itens: z.array(propostaItemSchema).default([]),
+  // Proposta que nasce da calculadora solar (`/app/solar`): o servidor refaz
+  // o cálculo com esta entrada, escolhe o modelo `energia_solar` e preenche o
+  // briefing — o número do PDF nunca é o que o navegador mandou pronto.
+  solar: entradaSolarSchema.optional(),
 });
 export type PropostaCreateInput = z.infer<typeof propostaCreateSchema>;

@@ -1,3 +1,5 @@
+import { MODELO_ENERGIA_SOLAR } from "@/lib/solar/modelo-de-proposta";
+
 import type { ModeloBase } from "./tipos";
 
 /**
@@ -1669,6 +1671,9 @@ export const MODELOS_BASE: Readonly<Record<string, ModeloBase>> = Object.freeze(
       "terms",
       "approval"
     ]
-  }
+  },
+  // Fora do pacote de web design: o modelo de energia solar mora no módulo
+  // dele (`lib/solar/`), que é quem sabe preencher as variáveis `solar.*`.
+  "energia_solar": MODELO_ENERGIA_SOLAR
 } as Record<string, ModeloBase>,
 );

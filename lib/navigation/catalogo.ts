@@ -431,6 +431,18 @@ export const NAV_CATALOG = [
     capacidade: "propostas",
   },
   {
+    // Módulo de energia solar do fork: dimensiona o sistema pelo consumo e
+    // gera a proposta no modelo `energia_solar` (lib/solar/). Mesma
+    // capacidade das Propostas, porque o destino dele é uma proposta.
+    href: "/app/solar",
+    label: "Energia solar",
+    description: "Dimensione o sistema fotovoltaico e gere a proposta com economia e payback.",
+    icon: "Sun",
+    group: "crm",
+    section: "Fechar a venda",
+    capacidade: "propostas",
+  },
+  {
     // A promessa que o comentário da Agenda fazia desde que ela nasceu. Aqui se
     // decide O QUE se pode marcar, quanto dura e quem atende — e é isto que a
     // tela de marcar e o agente de IA oferecem ao cliente.

@@ -14,7 +14,7 @@ function modelo(over: Partial<ModeloEditavel> = {}): ModeloEditavel {
 }
 
 describe("validarModelo", () => {
-  it("os 8 modelos da plataforma são válidos (controle positivo)", () => {
+  it("os modelos da plataforma são válidos (controle positivo)", () => {
     for (const [slug, m] of Object.entries(MODELOS_BASE)) {
       expect(validarModelo({ nome: ROTULO_DO_MODELO[slug]!, descricao: null, sections: m.sections, sectionOrder: m.sectionOrder }), slug).toEqual([]);
     }
