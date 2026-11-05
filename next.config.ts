@@ -72,6 +72,10 @@ const nextConfig: NextConfig = {
       "./node_modules/.pnpm/pdfjs-dist@*/node_modules/pdfjs-dist/**",
     ],
   },
+  // Acesso pelo túnel rápido da Cloudflare em modo de desenvolvimento
+  // (`cloudflared tunnel --url http://localhost:3000`): sem isto o Next 16
+  // recusa o HMR e os recursos de dev vindos de outro endereço.
+  allowedDevOrigins: ["*.trycloudflare.com"],
   reactStrictMode: true,
   poweredByHeader: false,
   // typedRoutes moved out of experimental in Next 15.5+
