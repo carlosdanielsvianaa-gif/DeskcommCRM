@@ -996,7 +996,7 @@ describe("crm_preparar_proposta", () => {
       categorias?: Array<{ chave: string; rotulo: string; orientacao: string }>;
       instrucao?: string;
     };
-    expect(r.modelos).toHaveLength(8);
+    expect(r.modelos).toHaveLength(9);
     expect(r.modelos?.[0]).toEqual({ slug: "site_institucional", nome: "Site institucional", origem: "plataforma" });
     expect(r.categorias?.map((c) => c.chave)).toEqual([
       "objetivo",

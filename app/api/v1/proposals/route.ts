@@ -21,6 +21,8 @@ import { createClient } from "@/lib/supabase/server";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { fusoDaOrganizacao, somarDiasNoFuso } from "@/lib/propostas/data-no-fuso";
 import { sePropostasDesligadas } from "@/lib/propostas/porta";
+import { montarPropostaSolar } from "@/lib/solar/briefing";
+import { MODELO_ENERGIA_SOLAR } from "@/lib/solar/modelo-de-proposta";
 
 export const dynamic = "force-dynamic";
 
@@ -117,7 +119,22 @@ export async function POST(req: NextRequest): Promise<Response> {
   // D11 — a proposta nasce na moeda da organização; item de catálogo em
   // moeda diferente é recusado dentro do resolvedor, nunca convertido.
   const moeda = await moedaDaOrganizacao(supabase, authz.org.orgId);
-  const resolvido = await resolverItensDaProposta(supabase, authz.org.orgId, input.itens, moeda);
+  // Calculadora solar: o item do sistema entra quando a pessoa não mandou
+  // itens próprios (ex.: escolheu os equipamentos do catálogo).
+  const solar = input.solar ? montarPropostaSolar(input.solar) : null;
+  if (solar && solar.resultado.quantidade_modulos === 0) {
+    return fail(
+      "validation_failed",
+      t("Com esse consumo não há energia a compensar: ele não passa do custo de disponibilidade da ligação."),
+      422,
+      { requestId },
+    );
+  }
+  const itensDaEntrada =
+    solar && input.itens.length === 0
+      ? [{ product_id: null, descricao: solar.item.descricao, quantidade: 1, preco_unitario_cents: solar.item.preco_unitario_cents, desconto_cents: 0, position: 1 }]
+      : input.itens;
+  const resolvido = await resolverItensDaProposta(supabase, authz.org.orgId, itensDaEntrada, moeda);
   if (!resolvido.ok) {
     return fail("validation_failed", t(resolvido.motivo), 422, { requestId });
   }
@@ -145,6 +162,9 @@ export async function POST(req: NextRequest): Promise<Response> {
       pricing_status: resolvido.pricingStatus,
       moeda,
       status: "rascunho",
+      ...(solar
+        ? { template_slug: MODELO_ENERGIA_SOLAR.slug, template_version: MODELO_ENERGIA_SOLAR.version, briefing_json: solar.briefing }
+        : {}),
     })
     .select("id")
     .single();
