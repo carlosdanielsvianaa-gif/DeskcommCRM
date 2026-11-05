@@ -14,6 +14,15 @@ export function JornadaDoCliente({ slugDaEtapa }: { slugDaEtapa: string | null |
   const t = useT();
   const posicao = posicaoNaJornada(slugDaEtapa);
   if (!posicao) return null;
+  // Um t() literal por marco: a cerca de i18n recusa t() sobre variável.
+  const rotulos: Record<(typeof MARCOS_DA_JORNADA)[number], string> = {
+    Proposta: t("Proposta"),
+    Contrato: t("Contrato"),
+    Financeiro: t("Financeiro"),
+    "Engenharia e Homologação": t("Engenharia e Homologação"),
+    Instalação: t("Instalação"),
+    "Gerando Energia": t("Gerando Energia"),
+  };
   return (
     <section aria-label={t("Jornada do cliente")} data-testid="jornada-do-cliente" className="border-b border-border py-3">
       <p className="mb-2 text-xs font-medium text-text-muted">{t("Jornada do cliente")}</p>
@@ -40,7 +49,7 @@ export function JornadaDoCliente({ slugDaEtapa }: { slugDaEtapa: string | null |
                   estado === "pendente" ? "text-text-muted" : "font-medium text-text",
                 )}
               >
-                {t(marco)}
+                {rotulos[marco]}
               </span>
             </li>
           );
