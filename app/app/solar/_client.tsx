@@ -64,6 +64,8 @@ interface Formulario {
 }
 
 const P = ENTRADA_SOLAR_PADRAO;
+/** Chave do formulário (não é texto de tela) — fora do JSX para a guarda de i18n não lê-la como prosa. */
+const CAMPO_DO_TELHADO = "tipo_telhado" satisfies keyof Formulario;
 const decimal = (n: number) => String(n).replace(".", ",");
 
 const FORMULARIO_INICIAL: Formulario = {
@@ -375,7 +377,7 @@ export function CalculadoraSolarClient({ leads, podeCriarProposta, funis, podeCr
                 t("Média do estado. Para mais precisão, use o valor da cidade no CRESESB SunData."),
               )}
               {campoTexto("concessionaria", t("Distribuidora"), t("Ex.: Cemig, Enel, CPFL"))}
-              {campoTexto("tipo_telhado", t("Tipo de telhado"), t("Ex.: cerâmico, fibrocimento, laje"))}
+              {campoTexto(CAMPO_DO_TELHADO, t("Tipo de telhado"), t("Ex.: cerâmico, fibrocimento, laje"))}
             </CardContent>
           </Card>
 
