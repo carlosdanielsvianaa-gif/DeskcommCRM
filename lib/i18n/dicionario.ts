@@ -41,6 +41,15 @@ type Traducoes = Record<string, Partial<Record<Exclude<Idioma, "pt-BR">, string>
 
 export const DICIONARIO: Traducoes = {
   // Módulo de energia solar (app/app/solar, lib/solar).
+  "Taxa de aceite": { es: "Tasa de aceptación" },
+  "das propostas enviadas": { es: "de las propuestas enviadas" },
+  "Potência proposta": { es: "Potencia propuesta" },
+  "Indicadores das propostas": { es: "Indicadores de las propuestas" },
+  "Potência (kWp)": { es: "Potencia (kWp)" },
+  "Geração (kWh/mês)": { es: "Generación (kWh/mes)" },
+  "Jornada do cliente": { es: "Recorrido del cliente" },
+  "Engenharia e Homologação": { es: "Ingeniería y homologación" },
+  "Gerando Energia": { es: "Generando energía" },
   "Aceitas": { es: "Aceptadas" },
   "Totais do funil": { es: "Totales del embudo" },
   "Funis de energia solar": { es: "Embudos de energía solar" },

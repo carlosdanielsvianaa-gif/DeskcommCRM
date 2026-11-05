@@ -9,6 +9,7 @@ import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import type { ApiSuccess } from "@/lib/api/wrappers";
 import { formatCents } from "@/lib/money";
+import { calcularIndicadores } from "@/lib/propostas/indicadores";
 import type { ProposalStatus } from "@/lib/propostas/tipos";
 
 interface PropostaResumo {
@@ -22,6 +23,13 @@ interface PropostaResumo {
   versao: number;
   created_at: string;
   drafted_by_agent_id: string | null;
+  /** `briefing_json.solar` das propostas de energia solar (textos já formatados). */
+  solar?: Record<string, string> | null;
+}
+
+function campoSolar(p: PropostaResumo, chave: string): string {
+  const v = p.solar?.[chave];
+  return typeof v === "string" && v !== "" ? v : "—";
 }
 
 function aguardaRevisao(p: PropostaResumo): boolean {
@@ -72,6 +80,25 @@ export function ProposalsClient({ podeCriar }: { podeCriar: boolean }) {
     return () => controller.abort();
   }, [tentativa]);
 
+  const temSolar = propostas.some((p) => p.solar);
+  const ind = calcularIndicadores(propostas);
+  const indicadores = [
+    { id: "propostas", rotulo: t("Propostas"), valor: String(ind.propostas.quantidade), detalhe: formatCents(ind.propostas.valor_cents, "BRL") },
+    { id: "aceitas", rotulo: t("Aceitas"), valor: String(ind.aceitas.quantidade), detalhe: formatCents(ind.aceitas.valor_cents, "BRL") },
+    {
+      id: "taxa",
+      rotulo: t("Taxa de aceite"),
+      valor: ind.taxa_de_aceite === null ? "—" : `${ind.taxa_de_aceite.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`,
+      detalhe: t("das propostas enviadas"),
+    },
+    {
+      id: "potencia",
+      rotulo: t("Potência proposta"),
+      valor: ind.potencia_kwp.toLocaleString("pt-BR", { maximumFractionDigits: 2 }),
+      detalhe: "kWp",
+    },
+  ];
+
   return (
     <div className="mx-auto w-full max-w-5xl space-y-4 md:p-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
@@ -82,6 +109,22 @@ export function ProposalsClient({ podeCriar }: { podeCriar: boolean }) {
           </Button>
         ) : null}
       </header>
+
+      {!carregando && !erro && propostas.length > 0 ? (
+        <section
+          aria-label={t("Indicadores das propostas")}
+          data-testid="indicadores-propostas"
+          className="grid grid-cols-2 gap-2 md:grid-cols-4"
+        >
+          {indicadores.map((i) => (
+            <div key={i.id} data-testid={`indicador-${i.id}`} className="rounded-lg border p-3">
+              <p className="text-xs text-muted-foreground">{i.rotulo}</p>
+              <p className="text-xl font-semibold tabular-nums">{i.valor}</p>
+              <p className="truncate text-xs text-muted-foreground tabular-nums">{i.detalhe}</p>
+            </div>
+          ))}
+        </section>
+      ) : null}
 
       {carregando ? (
         <p role="status" className="text-sm text-muted-foreground">
@@ -112,6 +155,13 @@ export function ProposalsClient({ podeCriar }: { podeCriar: boolean }) {
               <tr className="border-b text-left">
                 <th scope="col" className="p-3">{t("Número")}</th>
                 <th scope="col" className="p-3">{t("Título")}</th>
+                {temSolar ? (
+                  <>
+                    <th scope="col" className="p-3 text-right">{t("Potência (kWp)")}</th>
+                    <th scope="col" className="p-3 text-right">{t("Geração (kWh/mês)")}</th>
+                    <th scope="col" className="p-3">{t("Tipo")}</th>
+                  </>
+                ) : null}
                 <th scope="col" className="p-3">{t("Status")}</th>
                 <th scope="col" className="p-3 text-right">{t("Valor")}</th>
               </tr>
@@ -135,6 +185,17 @@ export function ProposalsClient({ podeCriar }: { podeCriar: boolean }) {
                       {p.titulo}
                     </Link>
                   </td>
+                  {temSolar ? (
+                    <>
+                      <td className="whitespace-nowrap p-3 text-right tabular-nums max-md:p-0 max-md:text-xs">
+                        {campoSolar(p, "potencia_kwp")}
+                      </td>
+                      <td className="whitespace-nowrap p-3 text-right tabular-nums max-md:p-0 max-md:text-xs">
+                        {campoSolar(p, "geracao_mensal_kwh")}
+                      </td>
+                      <td className="p-3 max-md:p-0 max-md:text-xs">{campoSolar(p, "tipo_ligacao")}</td>
+                    </>
+                  ) : null}
                   <td className="p-3 max-md:p-0 max-md:text-xs">
                     {aguardaRevisao(p) ? (
                       <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
