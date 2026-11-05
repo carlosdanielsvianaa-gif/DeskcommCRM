@@ -11,6 +11,7 @@ const entrada: EntradaSolarValidada = {
   ...ENTRADA_SOLAR_PADRAO,
   consumo_medio_kwh: 500,
   hsp: 5.4,
+  ano_inicio: 2026,
   uf: "MG",
   cidade: "Belo Horizonte",
   marca_modulo: "Marca X",

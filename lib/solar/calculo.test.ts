@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { calcularSistemaSolar, ENTRADA_SOLAR_PADRAO, sugerirInversorKw, type EntradaSolar } from "./calculo";
+import { calcularSistemaSolar, ENTRADA_SOLAR_PADRAO, percentualDoFioB, sugerirInversorKw, type EntradaSolar } from "./calculo";
 import { ESTADOS_SOLARES, hspDoEstado } from "./irradiacao";
 
 const base: EntradaSolar = {
@@ -10,7 +10,9 @@ const base: EntradaSolar = {
   tipo_ligacao: "bifasica",
   potencia_modulo_w: 610,
   rendimento_pct: 80,
-  fio_b_pct: 0,
+  fio_b_kwh: 0,
+  simultaneidade_pct: 30,
+  ano_inicio: 2026,
   preco_por_wp: 3,
   tarifa_kwh: 0.95,
 };
@@ -32,11 +34,27 @@ describe("calcularSistemaSolar", () => {
     expect(r.economia_mensal).toBeCloseTo(450 * 0.95, 2);
   });
 
-  it("o Fio B reduz a economia na mesma proporção", () => {
+  it("o Fio B do ano 1 incide só sobre a parte injetada, no percentual do ano", () => {
     const sem = calcularSistemaSolar(base);
-    const com = calcularSistemaSolar({ ...base, fio_b_pct: 20 });
-    expect(com.economia_mensal).toBeCloseTo(sem.economia_mensal * 0.8, 2);
+    const com = calcularSistemaSolar({ ...base, fio_b_kwh: 0.4 });
+    // 2026 → 60%; 70% injetado; 450 kWh/mês aproveitados
+    const desconto = 450 * 0.7 * 0.4 * 0.6;
+    expect(com.economia_mensal).toBeCloseTo(sem.economia_mensal - desconto, 1);
     expect(com.payback_anos!).toBeGreaterThan(sem.payback_anos!);
+  });
+
+  it("mais consumo simultâneo, menos Fio B pago", () => {
+    const pouca = calcularSistemaSolar({ ...base, fio_b_kwh: 0.4, simultaneidade_pct: 10 });
+    const muita = calcularSistemaSolar({ ...base, fio_b_kwh: 0.4, simultaneidade_pct: 60 });
+    expect(muita.economia_mensal).toBeGreaterThan(pouca.economia_mensal);
+  });
+
+  it("a escada do Fio B pesa mais a cada ano até 2029", () => {
+    const r = calcularSistemaSolar({ ...base, fio_b_kwh: 0.4, reajuste_tarifa_pct_ano: 0, degradacao_pct_ano: 0 });
+    // sem reajuste nem degradação, a economia só cai porque o Fio B sobe
+    expect(r.fluxo[1]!.economia).toBeLessThan(r.fluxo[0]!.economia);
+    expect(r.fluxo[3]!.economia).toBeLessThan(r.fluxo[2]!.economia);
+    expect(r.fluxo[4]!.economia).toBe(r.fluxo[3]!.economia); // 2030 = 2029 = 100%
   });
 
   it("payback é o ponto em que o acumulado alcança o investimento", () => {
@@ -62,6 +80,14 @@ describe("calcularSistemaSolar", () => {
 
   it("o fluxo tem um ano por ano de análise", () => {
     expect(calcularSistemaSolar({ ...base, anos_analise: 25 }).fluxo).toHaveLength(25);
+  });
+});
+
+describe("percentualDoFioB", () => {
+  it("segue o art. 27 da Lei 14.300 e assume 100% de 2029 em diante", () => {
+    expect([2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2035].map(percentualDoFioB)).toEqual([
+      0, 15, 30, 45, 60, 75, 90, 100, 100,
+    ]);
   });
 });
 

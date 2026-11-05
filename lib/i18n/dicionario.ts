@@ -41,6 +41,11 @@ type Traducoes = Record<string, Partial<Record<Exclude<Idioma, "pt-BR">, string>
 
 export const DICIONARIO: Traducoes = {
   // Módulo de energia solar (app/app/solar, lib/solar).
+  "Fio B da distribuidora (R$/kWh)": { es: "Fio B de la distribuidora (R$/kWh)" },
+  "Componente Fio B da TUSD, na tarifa da distribuidora. A cobrança segue a escada da Lei 14.300: 60% em 2026, 75% em 2027, 90% em 2028.": { es: "Componente Fio B de la TUSD, en la tarifa de la distribuidora. El cobro sigue la escala de la Ley 14.300: 60% en 2026, 75% en 2027, 90% en 2028." },
+  "Consumo simultâneo (%)": { es: "Consumo simultáneo (%)" },
+  "Parte da geração usada na hora, que não é injetada na rede e não paga Fio B.": { es: "Parte de la generación usada en el momento, que no se inyecta a la red y no paga Fio B." },
+  "Ano em que o sistema liga": { es: "Año en que el sistema se conecta" },
   "Acima do período": { es: "Por encima del período" },
   "Ano": { es: "Año" },
   "Anos da análise": { es: "Años del análisis" },
@@ -76,8 +81,6 @@ export const DICIONARIO: Traducoes = {
   "Monofásica (30 kWh mínimos)": { es: "Monofásica (30 kWh mínimos)" },
   "Média do estado. Para mais precisão, use o valor da cidade no CRESESB SunData.": { es: "Promedio del estado. Para más precisión, usa el valor de la ciudad en CRESESB SunData." },
   "Ou: valor médio da conta (R$)": { es: "O: valor promedio de la factura (R$)" },
-  "Parcela não compensada — Fio B (%)": { es: "Parte no compensada — Fio B (%)" },
-  "Parte da tarifa que a Lei 14.300 não compensa. Ajuste conforme a distribuidora.": { es: "Parte de la tarifa que la Ley 14.300 no compensa. Ajústala según la distribuidora." },
   "Perda de rendimento dos módulos (% ao ano)": { es: "Pérdida de rendimiento de los módulos (% por año)" },
   "Perdas de calor, cabos e inversor.": { es: "Pérdidas por calor, cables e inversor." },
   "Potência do módulo (W)": { es: "Potencia del módulo (W)" },
