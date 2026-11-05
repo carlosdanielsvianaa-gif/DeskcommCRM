@@ -21,6 +21,7 @@ import { PropostasDoNegocio } from "./PropostasDoNegocio";
 import { TarefasDoNegocio } from "./TarefasDoNegocio";
 import { OwnerBadge } from "./OwnerBadge";
 import { EtapaNoDossie } from "./EtapaNoDossie";
+import { JornadaDoCliente } from "./JornadaDoCliente";
 import { SecaoDoDossie, useSecoesRecolhidas } from "./SecaoDoDossie";
 import { resolveLeadOwner } from "@/lib/kanban/owner";
 import type { AtalhoDoCard } from "@/lib/leads/atalhos-do-card";
@@ -40,7 +41,7 @@ interface Props {
    * troca o nome da etapa por um seletor — ver `EtapaNoDossie`. Ausentes (o
    * calendário, por enquanto), fica o texto de antes.
    */
-  etapas?: Pick<Stage, "id" | "name">[];
+  etapas?: Array<Pick<Stage, "id" | "name"> & { slug?: string }>;
   onMudarEtapa?: (stageId: string) => void;
   /**
    * OS ATALHOS DO CARD (#3487): o que está em `crm_pipelines.settings.atalhos`,
@@ -240,6 +241,9 @@ export function LeadDossier({
             {t("Editar campos")}
           </button>
         </div>
+
+        {/* Jornada do cliente solar (lib/solar/jornada.ts) — some fora dos funis solares. */}
+        <JornadaDoCliente slugDaEtapa={etapas?.find((e) => e.id === lead.stage_id)?.slug} />
 
         {/* O score NÃO aparece na timeline: recálculo é telemetria e não emite
             atividade (silêncio para telemetria, pulso para mudança de estado).

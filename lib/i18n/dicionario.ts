@@ -41,6 +41,17 @@ type Traducoes = Record<string, Partial<Record<Exclude<Idioma, "pt-BR">, string>
 
 export const DICIONARIO: Traducoes = {
   // Módulo de energia solar (app/app/solar, lib/solar).
+  "Taxa de aceite": { es: "Tasa de aceptación" },
+  "das propostas enviadas": { es: "de las propuestas enviadas" },
+  "Potência proposta": { es: "Potencia propuesta" },
+  "Indicadores das propostas": { es: "Indicadores de las propuestas" },
+  "Potência (kWp)": { es: "Potencia (kWp)" },
+  "Geração (kWh/mês)": { es: "Generación (kWh/mes)" },
+  "Jornada do cliente": { es: "Recorrido del cliente" },
+  "Engenharia e Homologação": { es: "Ingeniería y homologación" },
+  "Gerando Energia": { es: "Generando energía" },
+  "Aceitas": { es: "Aceptadas" },
+  "Totais do funil": { es: "Totales del embudo" },
   "Funis de energia solar": { es: "Embudos de energía solar" },
   "Dois funis prontos, com as etapas e os campos do negócio solar (consumo, tipo, cidade, UF, origem e loja). Dá para renomear e ajustar depois em Etapas do funil.": { es: "Dos embudos listos, con las etapas y los campos del negocio solar (consumo, tipo, ciudad, UF, origen y tienda). Se pueden renombrar y ajustar después en Etapas del embudo." },
   "Abrir funil": { es: "Abrir embudo" },
