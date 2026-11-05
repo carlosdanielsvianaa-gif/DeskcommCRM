@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, Sun } from "lucide-react";
 
@@ -20,9 +21,20 @@ import { ESTADOS_SOLARES, hspDoEstado } from "@/lib/solar/irradiacao";
 
 import type { LeadOption } from "../proposals/novo/_client";
 
+export interface FunilSolarNaTela {
+  modelo: "energia_solar_vendas" | "energia_solar_obra";
+  nome: string;
+  descricao: string;
+  etapas: string[];
+  /** O funil já criado nesta organização, ou `null` se ainda não existe. */
+  id: string | null;
+}
+
 interface Props {
   leads: LeadOption[];
   podeCriarProposta: boolean;
+  funis: FunilSolarNaTela[];
+  podeCriarFunil: boolean;
   preselectedLeadId?: string;
 }
 
@@ -118,7 +130,7 @@ const reais = (v: number) => v.toLocaleString("pt-BR", { style: "currency", curr
 const num = (v: number, casas = 0) =>
   v.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas });
 
-export function CalculadoraSolarClient({ leads, podeCriarProposta, preselectedLeadId }: Props) {
+export function CalculadoraSolarClient({ leads, podeCriarProposta, funis, podeCriarFunil, preselectedLeadId }: Props) {
   const t = useT();
   const router = useRouter();
   const [form, setForm] = useState<Formulario>(FORMULARIO_INICIAL);
@@ -126,6 +138,19 @@ export function CalculadoraSolarClient({ leads, podeCriarProposta, preselectedLe
     preselectedLeadId && leads.some((l) => l.id === preselectedLeadId) ? preselectedLeadId : "",
   );
   const [gerando, setGerando] = useState(false);
+  const [criandoFunil, setCriandoFunil] = useState<string | null>(null);
+
+  async function criarFunil(funil: FunilSolarNaTela) {
+    setCriandoFunil(funil.modelo);
+    try {
+      await apiClient.post("/api/v1/pipelines", { name: funil.nome, description: funil.descricao, modelo: funil.modelo });
+      router.refresh();
+    } catch (err) {
+      showApiError(err);
+    } finally {
+      setCriandoFunil(null);
+    }
+  }
 
   // Lê os padrões lembrados DEPOIS da hidratação: ler o navegador no
   // inicializador do useState faria o HTML do servidor divergir do cliente.
@@ -264,6 +289,46 @@ export function CalculadoraSolarClient({ leads, podeCriarProposta, preselectedLe
           {t("Dimensione o sistema a partir do consumo do cliente e gere a proposta com economia e retorno do investimento.")}
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t("Funis de energia solar")}</CardTitle>
+          <CardDescription>
+            {t("Dois funis prontos, com as etapas e os campos do negócio solar (consumo, tipo, cidade, UF, origem e loja). Dá para renomear e ajustar depois em Etapas do funil.")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-2">
+          {funis.map((funil) => (
+            <div key={funil.modelo} className="flex flex-col gap-3 rounded-md border p-4">
+              <div className="space-y-1">
+                <p className="font-medium">{t(funil.nome)}</p>
+                <p className="text-sm text-muted-foreground">{t(funil.descricao)}</p>
+              </div>
+              <p className="text-xs text-muted-foreground">{funil.etapas.map((e) => t(e)).join(" → ")}</p>
+              <div className="mt-auto">
+                {funil.id ? (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/app/pipelines/${funil.id}`}>{t("Abrir funil")}</Link>
+                  </Button>
+                ) : podeCriarFunil ? (
+                  <Button size="sm" onClick={() => criarFunil(funil)} disabled={criandoFunil !== null}>
+                    {criandoFunil === funil.modelo ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {t("Criando…")}
+                      </>
+                    ) : (
+                      t("Criar este funil")
+                    )}
+                  </Button>
+                ) : (
+                  <p className="text-xs text-muted-foreground">{t("Peça a quem gerencia a empresa para criar este funil.")}</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="space-y-6">

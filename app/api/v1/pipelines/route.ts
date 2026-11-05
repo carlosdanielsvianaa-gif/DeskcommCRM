@@ -24,6 +24,8 @@ import { createClient } from "@/lib/supabase/server";
 import { conflitoDoBanco, corpo, lerFunis } from "./_funis";
 import { listPipelinesHandler } from "./_handler";
 import { traduzir } from "@/lib/i18n/dicionario";
+import type { Json } from "@/lib/database.types";
+import { MODELOS_DE_FUNIL, MODELOS_DE_FUNIL_SOLAR, type ModeloDeFunilSolar } from "@/lib/solar/funis";
 
 export const dynamic = "force-dynamic";
 
@@ -52,12 +54,16 @@ const bodySchema = z
   .object({
     name: z.string().min(1).max(80),
     description: z.string().max(280).nullable().optional(),
+    // Funil pronto de nicho (lib/solar/funis.ts): troca as etapas iniciais
+    // pelas do modelo e já declara os campos do negócio.
+    modelo: z.enum(MODELOS_DE_FUNIL_SOLAR).optional(),
   })
   .strict();
 
 /** As etapas com que o funil nasce, já com a régua de posição do board. */
-function etapasIniciais(orgId: string, pipelineId: string) {
-  return ETAPAS_INICIAIS.map((etapa, i) => ({
+function etapasIniciais(orgId: string, pipelineId: string, modelo?: ModeloDeFunilSolar) {
+  const etapas = modelo ? MODELOS_DE_FUNIL[modelo].etapas : ETAPAS_INICIAIS;
+  return etapas.map((etapa, i) => ({
     organization_id: orgId,
     pipeline_id: pipelineId,
     name: etapa.name,
@@ -94,6 +100,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
   const name = parsed.data.name.trim();
   const description = parsed.data.description?.trim() || null;
+  const modelo = parsed.data.modelo;
 
   const supabase = await createClient();
 
@@ -123,6 +130,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     // criado sem funil escolhido não teria para onde ir. `uniq_..._org_default`
     // é parcial, então só os ativos disputam esse lugar.
     is_default: funis.filter((f) => !f.is_archived).length === 0,
+    ...(modelo ? { settings: { fields: [...MODELOS_DE_FUNIL[modelo].campos] } as unknown as Json } : {}),
   };
 
   const { data: criado, error } = await supabase
@@ -140,7 +148,7 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   const { error: etapasErr } = await supabase
     .from("crm_stages")
-    .insert(etapasIniciais(orgId, pipelineId));
+    .insert(etapasIniciais(orgId, pipelineId, modelo));
 
   // ⚠️ COMPENSAÇÃO, PORQUE SÃO DUAS ESCRITAS SEM TRANSAÇÃO. Um funil sem etapa é
   // quadro morto: o board abre sem coluna nenhuma, não recebe negócio, e quem
@@ -170,7 +178,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     resourceType: "crm_pipeline",
     resourceId: pipelineId,
     requestId,
-    metadata: { name, slug: row.slug, is_default: row.is_default },
+    metadata: { name, slug: row.slug, is_default: row.is_default, ...(modelo ? { modelo } : {}) },
   });
 
   // Relê em vez de espelhar o que foi pedido: a tela mostra o que o banco tem.

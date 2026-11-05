@@ -4,9 +4,10 @@ import { redirect } from "next/navigation";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { roleAtLeast } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
+import { MODELOS_DE_FUNIL, MODELOS_DE_FUNIL_SOLAR } from "@/lib/solar/funis";
 
 import type { LeadOption } from "../proposals/novo/_client";
-import { CalculadoraSolarClient } from "./_client";
+import { CalculadoraSolarClient, type FunilSolarNaTela } from "./_client";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Energia solar" };
@@ -41,9 +42,30 @@ export default async function CalculadoraSolarPage({
 
   const sp = searchParams ? await searchParams : undefined;
 
+  const supabase = await createClient();
+
+  // Os funis prontos já criados nesta organização, reconhecidos pelo nome com
+  // que o modelo os cria (a pessoa pode renomear — aí o botão volta a oferecer).
+  const { data: funisData } = await supabase
+    .from("crm_pipelines")
+    .select("id, name, is_archived")
+    .eq("organization_id", activeOrg.orgId);
+  const funisAtivos = ((funisData ?? []) as Array<{ id: string; name: string; is_archived: boolean | null }>).filter(
+    (f) => !f.is_archived,
+  );
+  const funis: FunilSolarNaTela[] = MODELOS_DE_FUNIL_SOLAR.map((modelo) => {
+    const m = MODELOS_DE_FUNIL[modelo];
+    return {
+      modelo,
+      nome: m.nome,
+      descricao: m.descricao,
+      etapas: m.etapas.map((e) => e.name),
+      id: funisAtivos.find((f) => f.name.trim() === m.nome)?.id ?? null,
+    };
+  });
+
   let leads: LeadOption[] = [];
   if (podeCriarProposta) {
-    const supabase = await createClient();
     const { data } = await supabase
       .from("crm_leads")
       .select("id, title, contact_id, contacts ( id, name, display_name, phone_number )")
@@ -61,6 +83,8 @@ export default async function CalculadoraSolarPage({
     <CalculadoraSolarClient
       leads={leads}
       podeCriarProposta={podeCriarProposta}
+      funis={funis}
+      podeCriarFunil={roleAtLeast(activeOrg.role, "manager") && !user.support}
       preselectedLeadId={sp?.lead_id}
     />
   );

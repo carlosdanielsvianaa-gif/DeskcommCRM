@@ -16,6 +16,7 @@ import { ScoreSlot } from "./ScoreSlot";
 import { OwnerBadge } from "./OwnerBadge";
 import { ContatoNoCard } from "./ContatoNoCard";
 import { ArquivosNoCard } from "./ArquivosNoCard";
+import { SolarNoCard } from "./SolarNoCard";
 import { TarefasNoCard } from "./TarefasNoCard";
 
 /** Os dois gestos de seleção que o card sabe relatar. */
@@ -402,6 +403,10 @@ export function KanbanCard({
               Fica junto do contato, entre o conteúdo do negócio e o rodapé de
               dono/tempo. Some por inteiro quando o funil não declara campo de
               arquivo — quem não usa o recurso não vê card diferente. */}
+          {/* Consumo e cidade do negócio solar (lib/solar/funis.ts) — some
+              quando o negócio não tem esses campos. */}
+          <SolarNoCard lead={lead} />
+
           <ArquivosNoCard lead={lead} />
 
           {/* ④ dono (+ selo de tarefas) · ⑤ tempo no estágio */}
