@@ -198,6 +198,7 @@ describe("hubSections", () => {
       "/app/imports",
       "/app/settings/tenant/pipelines",
       "/app/proposals",
+      "/app/solar",
     ]);
   });
 
